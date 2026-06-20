@@ -225,12 +225,16 @@
     </div>
   </div>
 
-  <p class="foot">データはこの端末のブラウザに自動保存されます。</p>
+  <button class="btn" id="saveNow" style="margin-top:4px">☁️ データを保存する</button>
+
+  <p class="foot" id="syncStatus">読み込み中…</p>
+  <p class="foot">データはGoogleスプレッドシートに自動保存され、どの端末からでも同じ内容が見られます。</p>
 </main>
 
 <script>
 "use strict";
-const STORE = 'kakeibo_v2';
+// Googleスプレッドシート連携（Apps Script Web App）— 保存先はこれのみ（localStorageは使わない）
+const API_URL = 'https://script.google.com/macros/s/AKfycbxymi4NE_2yYh6934zS18yEyJOVhZh0Zaex_JTXxru8FK9yzmPPP1E3F-6ZTlMTMK8vvg/exec';
 const yen = n => '¥' + Math.round(n||0).toLocaleString('ja-JP');
 const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -251,22 +255,68 @@ const CATS = [
 const FOOD_WK = 10000, KOSAI_WK = 7500;
 
 // ---- 状態 ----
-let DB = load();
+let DB = base();          // 起動時は空。必ずスプレッドシートから読み込んで上書きする
+let loaded = false;       // 初回読み込みが完了するまで保存しない（空データで上書き防止）
 let curKey = periodKey(new Date());
 
-function load(){
-  let d;
-  try{ d = JSON.parse(localStorage.getItem(STORE)) || base(); }
-  catch(e){ d = base(); }
-  // 資産の後方互換
+function base(){ return {months:{}, assets:{cash:0,stock:0,fund:0,bond:0,history:[]}}; }
+
+// 読み込んだデータの形を整える（後方互換）
+function normalize(d){
+  if(!d || typeof d!=='object' || Array.isArray(d)) d = base();
   if(!d.assets) d.assets = base().assets;
   ['cash','stock','fund','bond'].forEach(k=>{ if(typeof d.assets[k]!=='number') d.assets[k]=0; });
   if(!Array.isArray(d.assets.history)) d.assets.history=[];
-  if(!d.months) d.months={};
+  if(!d.months || typeof d.months!=='object') d.months={};
   return d;
 }
-function base(){ return {months:{}, assets:{cash:0,stock:0,fund:0,bond:0,history:[]}}; }
-function save(){ localStorage.setItem(STORE, JSON.stringify(DB)); }
+
+// 状態表示（フッター）
+function setStatus(msg){ const el=document.getElementById('syncStatus'); if(el) el.textContent=msg; }
+function nowStr(){ const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+// ---- 保存：Googleスプレッドシートのみ ----
+let saveTimer=null;
+function save(){
+  if(!loaded){ return; }   // 読み込み完了前はクラウドへ書き込まない
+  setStatus('未保存…');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(cloudSave,800);   // 連続入力をまとめて送信（デバウンス）
+}
+
+function cloudSave(){
+  clearTimeout(saveTimer);
+  if(!loaded){ return; }
+  setStatus('スプレッドシートに保存中…');
+  // GASのCORSプリフライトを避けるため text/plain で送信
+  fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(DB)
+  })
+  .then(r=>r.text())
+  .then(()=>setStatus(`スプレッドシートに保存しました ✓ (${nowStr()})`))
+  .catch(()=>setStatus('⚠️ 保存に失敗しました。通信を確認し「データを保存する」を押してください'));
+}
+
+// ---- 起動：必ずスプレッドシートから読み込む ----
+async function init(){
+  render();                       // まず空の骨組みを描画
+  setStatus('スプレッドシートから読み込み中…');
+  try{
+    // キャッシュを使わず必ず最新を取得（端末間でズレないように）
+    const res=await fetch(API_URL,{method:'GET',cache:'no-store'});
+    const txt=await res.text();
+    const data= txt && txt.trim() ? JSON.parse(txt) : base();
+    DB=normalize(data);
+    loaded=true;                  // ここで初めて保存を許可
+    render();
+    setStatus(`スプレッドシートと同期中 ✓ (${nowStr()} 読込)`);
+  }catch(e){
+    loaded=false;                 // 読み込めない間は保存禁止（クラウドを壊さない）
+    setStatus('⚠️ 読み込み失敗：通信を確認してページを再読み込みしてください（保存は無効）');
+  }
+}
 
 // ---- 日付ユーティリティ ----
 function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -589,6 +639,16 @@ document.getElementById('kosaiAdd').onclick=()=>addEntry('kosai');
 document.getElementById('foodMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('food'); });
 document.getElementById('kosaiMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('kosai'); });
 document.getElementById('recordAsset').onclick=recordAsset;
+document.getElementById('saveNow').onclick=()=>{
+  if(!loaded){ setStatus('まだ読み込めていません。ページを再読み込みしてください'); return; }
+  // 入力中の資産残高も取り込んでから即送信
+  DB.assets.cash =+document.getElementById('aCash').value||0;
+  DB.assets.stock=+document.getElementById('aStock').value||0;
+  DB.assets.fund =+document.getElementById('aFund').value||0;
+  DB.assets.bond =+document.getElementById('aBond').value||0;
+  cloudSave();   // 予約済みの自動保存はcloudSave内でキャンセルして即実行
+  refreshTotals();
+};
 document.getElementById('toggleHist').onclick=()=>{
   const b=document.getElementById('histBox');
   b.style.display=b.style.display==='none'?'block':'none';
@@ -596,7 +656,7 @@ document.getElementById('toggleHist').onclick=()=>{
 };
 window.addEventListener('resize',()=>{ if(document.getElementById('histBox').style.display!=='none') drawChart(); });
 
-render();
+init();
 </script>
 </body>
 </html>
