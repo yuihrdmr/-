@@ -117,6 +117,8 @@
   .num-in:focus{outline:none;border-color:var(--brand-l);background:#fff;box-shadow:0 0 0 4px var(--ring)}
   .num-in.budget{width:86px;background:#fffbeb;border-color:#fde68a}
   .num-in.budget:focus{border-color:var(--amber);box-shadow:0 0 0 4px rgba(245,158,11,.15)}
+  .num-in.auto{width:100px;background:#f1f5f9;color:var(--sub);border-style:dashed;cursor:default}
+  .num-in.auto:focus{outline:none;box-shadow:none;border-color:var(--line)}
   .yen{font-size:12px;color:var(--sub)}
 
   .mini-bar{height:6px;background:#eef3f0;border-radius:99px;overflow:hidden;margin-top:7px}
@@ -169,6 +171,7 @@
   }
   .entry-form input:focus{outline:none;border-color:var(--brand-l);background:#fff;box-shadow:0 0 0 4px var(--ring)}
   .ef-date{flex:1 1 130px;font-family:var(--fnum);font-variant-numeric:tabular-nums}
+  .ef-name{flex:1 1 130px}
   .ef-amt{flex:1 1 90px;text-align:right;font-family:var(--fnum);font-variant-numeric:tabular-nums}
   .ef-memo{flex:1 1 100%}
   .ef-add{
@@ -244,6 +247,21 @@
     </div>
   </div>
 
+  <!-- サブスク（追加・削除できる） -->
+  <div class="card">
+    <h2>📺 サブスク（毎月固定・自動計上）</h2>
+    <div id="subsList"></div>
+    <div class="entry-form">
+      <input type="text" class="ef-name" id="subName" placeholder="サービス名">
+      <input type="number" inputmode="numeric" class="ef-amt" id="subAmt" placeholder="金額">
+      <button class="ef-add" id="subAdd">追加</button>
+    </div>
+    <div class="cat-total">
+      <span>サブスク 合計</span>
+      <span id="subsTotal">¥0</span>
+    </div>
+  </div>
+
   <!-- 食費（明細・週グループ） -->
   <div class="card">
     <h2>🍚 食費（週予算 ¥10,000）</h2>
@@ -311,33 +329,39 @@
 
 <script>
 "use strict";
-// Googleスプレッドシート連携（Apps Script Web App）— 保存先はこれのみ（localStorageは使わない）
+// Googleスプレッドシート連携（Apps Script Web App）
 const API_URL = 'https://script.google.com/macros/s/AKfycbxymi4NE_2yYh6934zS18yEyJOVhZh0Zaex_JTXxru8FK9yzmPPP1E3F-6ZTlMTMK8vvg/exec';
+const CACHE_KEY = 'kakeibo_cache_v1';   // 起動時に即表示するためのローカルキャッシュ
 const yen = n => '¥' + Math.round(n||0).toLocaleString('ja-JP');
 const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// ---- 支出カテゴリ定義 ----
+// ---- 支出カテゴリ定義（予算は固定。autoFillは実績を自動入力） ----
 const CATS = [
-  {key:'rent',     name:'家賃',            budget:58000},
-  {key:'electric', name:'電気代',          budget:7000, editable:true, note:'毎月変動'},
-  {key:'watergas', name:'水道・ガス',       budget:10000},
-  {key:'radiko',   name:'ラジコ',          budget:480},
-  {key:'teretv',   name:'テレ東BIZ',       budget:1200},
-  {key:'youtube',  name:'YouTube Premium', budget:1280},
-  {key:'amazon',   name:'Amazon Prime',    budget:600},
-  {key:'phone',    name:'スマホ代',         budget:2500},
-  {key:'beauty',   name:'美容院',          budget:0, editable:true, note:'毎月変動'},
-  {key:'nisa',     name:'NISA積立',        budget:60000},
-  {key:'shohin',   name:'消耗品',          budget:5000, bar:true},
+  {key:'rent',     name:'家賃',      budget:58000},
+  {key:'electric', name:'電気代',    budget:7000,  note:'毎月変動'},
+  {key:'watergas', name:'水道・ガス', budget:10000},
+  {key:'beauty',   name:'美容院',    budget:10000, note:'毎月変動'},
+  {key:'nisa',     name:'NISA積立',  budget:60000, autoFill:true},
+  {key:'shohin',   name:'消耗品',    budget:5000,  bar:true},
 ];
+// ---- サブスク初期値（追加・削除可能。予算=実績で自動計上） ----
+const DEFAULT_SUBS = [
+  {name:'ラジコ',           amount:480},
+  {name:'テレ東BIZ',        amount:1200},
+  {name:'YouTube Premium',  amount:1280},
+  {name:'Amazon Prime',     amount:600},
+  {name:'スマホ代',          amount:2500},
+];
+const cloneDefaultSubs = () => DEFAULT_SUBS.map(s=>({name:s.name, amount:s.amount}));
 const FOOD_WK = 10000, KOSAI_WK = 7500;
 
 // ---- 状態 ----
-let DB = base();          // 起動時は空。必ずスプレッドシートから読み込んで上書きする
-let loaded = false;       // 初回読み込みが完了するまで保存しない（空データで上書き防止）
+let DB = base();
+let loaded = false;       // 保存を許可してよいか（キャッシュ or クラウドのどちらかを読めたらtrue）
+let localEdited = false;  // 起動後にユーザーが編集したか（クラウド受信で上書きしないため）
 let curKey = periodKey(new Date());
 
-function base(){ return {months:{}, assets:{cash:0,stock:0,fund:0,bond:0,history:[]}}; }
+function base(){ return {months:{}, subs:cloneDefaultSubs(), assets:{cash:0,stock:0,fund:0,bond:0,history:[]}}; }
 
 // 読み込んだデータの形を整える（後方互換）
 function normalize(d){
@@ -346,6 +370,9 @@ function normalize(d){
   ['cash','stock','fund','bond'].forEach(k=>{ if(typeof d.assets[k]!=='number') d.assets[k]=0; });
   if(!Array.isArray(d.assets.history)) d.assets.history=[];
   if(!d.months || typeof d.months!=='object') d.months={};
+  // サブスク：未定義なら初期値を投入（空配列なら「全部消した」状態として尊重）
+  if(!Array.isArray(d.subs)) d.subs = cloneDefaultSubs();
+  d.subs = d.subs.filter(s=>s && typeof s==='object').map(s=>({name:String(s.name||''), amount:+s.amount||0}));
   return d;
 }
 
@@ -353,10 +380,17 @@ function normalize(d){
 function setStatus(msg){ const el=document.getElementById('syncStatus'); if(el) el.textContent=msg; }
 function nowStr(){ const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
-// ---- 保存：Googleスプレッドシートのみ ----
+// ---- ローカルキャッシュ（即時表示用） ----
+function writeCache(){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify(DB)); }catch(e){}
+}
+
+// ---- 保存：ローカルキャッシュ即時 ＋ Googleスプレッドシート（デバウンス） ----
 let saveTimer=null;
 function save(){
-  if(!loaded){ return; }   // 読み込み完了前はクラウドへ書き込まない
+  localEdited = true;
+  writeCache();            // まずローカルへ即保存（オフラインでも消えない）
+  if(!loaded){ return; }   // クラウドの初期読込前は送信しない
   setStatus('未保存…');
   clearTimeout(saveTimer);
   saveTimer=setTimeout(cloudSave,800);   // 連続入力をまとめて送信（デバウンス）
@@ -364,6 +398,7 @@ function save(){
 
 function cloudSave(){
   clearTimeout(saveTimer);
+  writeCache();
   if(!loaded){ return; }
   setStatus('スプレッドシートに保存中…');
   // GASのCORSプリフライトを避けるため text/plain で送信
@@ -373,26 +408,49 @@ function cloudSave(){
     body:JSON.stringify(DB)
   })
   .then(r=>r.text())
-  .then(()=>setStatus(`スプレッドシートに保存しました ✓ (${nowStr()})`))
+  .then(()=>{ localEdited=false; setStatus(`スプレッドシートに保存しました ✓ (${nowStr()})`); })
   .catch(()=>setStatus('⚠️ 保存に失敗しました。通信を確認し「データを保存する」を押してください'));
 }
 
-// ---- 起動：必ずスプレッドシートから読み込む ----
+// ---- 起動：キャッシュを即表示 → 裏で最新を取得して更新 ----
 async function init(){
-  render();                       // まず空の骨組みを描画
-  setStatus('スプレッドシートから読み込み中…');
+  // 1) ローカルキャッシュがあれば即座に表示（ラグなし）
+  let hasCache=false;
   try{
-    // キャッシュを使わず必ず最新を取得（端末間でズレないように）
+    const cached=localStorage.getItem(CACHE_KEY);
+    if(cached){
+      DB=normalize(JSON.parse(cached));
+      loaded=true;                // キャッシュがあるので編集・保存を許可
+      hasCache=true;
+      render();
+      setStatus('前回のデータを表示中…最新を確認しています');
+    }
+  }catch(e){ /* キャッシュ破損は無視 */ }
+  if(!hasCache){
+    render();                     // キャッシュなしは空の骨組みを描画
+    setStatus('スプレッドシートから読み込み中…');
+  }
+
+  // 2) バックグラウンドでスプレッドシートの最新を取得
+  try{
     const res=await fetch(API_URL,{method:'GET',cache:'no-store'});
     const txt=await res.text();
     const data= txt && txt.trim() ? JSON.parse(txt) : base();
-    DB=normalize(data);
-    loaded=true;                  // ここで初めて保存を許可
-    render();
-    setStatus(`スプレッドシートと同期中 ✓ (${nowStr()} 読込)`);
+    // 起動後にユーザーが編集していなければ最新で上書き（編集中なら端末の入力を優先）
+    if(!localEdited){
+      DB=normalize(data);
+      render();
+    }
+    loaded=true;                  // 保存を許可
+    writeCache();                 // 最新をキャッシュへ反映
+    setStatus(`スプレッドシートと同期済み ✓ (${nowStr()})`);
   }catch(e){
-    loaded=false;                 // 読み込めない間は保存禁止（クラウドを壊さない）
-    setStatus('⚠️ 読み込み失敗：通信を確認してページを再読み込みしてください（保存は無効）');
+    if(hasCache){
+      setStatus('⚠️ オフライン：前回のデータを表示中（オンライン復帰後に保存されます）');
+    }else{
+      loaded=false;               // 何も読めない場合は保存禁止（クラウドを壊さない）
+      setStatus('⚠️ 読み込み失敗：通信を確認してページを再読み込みしてください（保存は無効）');
+    }
   }
 }
 
@@ -459,8 +517,12 @@ function month(){
     DB.months[curKey]={ salary:0,bonus:0,exp, food:[], kosai:[] };
   }
   const M=DB.months[curKey];
-  // 後方互換：新カテゴリ補完
-  CATS.forEach(c=>{ if(!M.exp[c.key]) M.exp[c.key]={budget:c.budget,actual:0}; });
+  // カテゴリ補完＋予算は固定値で上書き＋autoFillは実績を自動入力
+  CATS.forEach(c=>{
+    if(!M.exp[c.key]) M.exp[c.key]={budget:c.budget,actual:0};
+    M.exp[c.key].budget=c.budget;                 // 予算は固定（手動変更不可）
+    if(c.autoFill) M.exp[c.key].actual=c.budget;  // 実績を自動入力
+  });
   // 後方互換：食費・交際費を明細形式へ
   M.food = migrateWeekly(M.food, curKey);
   M.kosai = migrateWeekly(M.kosai, curKey);
@@ -484,15 +546,16 @@ function render(){
     const e=M.exp[c.key];
     const row=document.createElement('div');
     row.className='row';
-    const budgetField = c.editable
-      ? `<input class="num-in budget" type="number" inputmode="numeric" data-bud="${c.key}" value="${e.budget||''}" placeholder="0">`
-      : `<span class="b">予算 ${yen(e.budget)}</span>`;
+    const actualField = c.autoFill
+      ? `<input class="num-in auto" type="number" value="${e.actual||''}" readonly tabindex="-1">`
+      : `<input class="num-in" type="number" inputmode="numeric" data-act="${c.key}" value="${e.actual||''}" placeholder="0">`;
+    const note = (c.note?'・'+c.note:'') + (c.autoFill?'・自動計上':'');
     row.innerHTML=`
       <div class="nm">
         <div class="n">${c.name}</div>
-        <div class="b">${c.editable?'予算':''} ${budgetField} ${c.note?'・'+c.note:''}</div>
+        <div class="b">予算 ${yen(e.budget)}${note}</div>
       </div>
-      <input class="num-in" type="number" inputmode="numeric" data-act="${c.key}" value="${e.actual||''}" placeholder="0">
+      ${actualField}
       <span class="yen">円</span>`;
     list.appendChild(row);
     // 消化バー付きカテゴリ（消耗品など）
@@ -508,9 +571,9 @@ function render(){
   list.querySelectorAll('[data-act]').forEach(i=>i.oninput=()=>{
     M.exp[i.dataset.act].actual=+i.value||0; save(); refreshTotals();
   });
-  list.querySelectorAll('[data-bud]').forEach(i=>i.oninput=()=>{
-    M.exp[i.dataset.bud].budget=+i.value||0; save(); refreshTotals();
-  });
+
+  // サブスク一覧
+  renderSubs();
 
   // 食費・交際費（明細→週グループ）
   renderEntries(M.food, FOOD_WK, 'foodGroups');
@@ -589,6 +652,40 @@ function addEntry(kind){
   aEl.focus();
 }
 
+// ---- サブスク（追加・削除できる。予算=実績で自動計上） ----
+function renderSubs(){
+  const box=document.getElementById('subsList');
+  box.innerHTML='';
+  if(!DB.subs.length){
+    box.innerHTML='<div class="empty-note">サブスクがありません。下の欄から追加できます。</div>';
+  }else{
+    DB.subs.forEach((s,idx)=>{
+      const row=document.createElement('div');
+      row.className='entry';
+      row.innerHTML=`<span class="e-memo">${escapeHtml(s.name||'')}</span>`
+        +`<span class="e-amt">${yen(s.amount)}</span>`
+        +`<button class="e-del" data-subdel="${idx}" title="削除">×</button>`;
+      box.appendChild(row);
+    });
+  }
+  box.querySelectorAll('[data-subdel]').forEach(b=>b.onclick=()=>{
+    DB.subs.splice(+b.dataset.subdel,1); save(); render();
+  });
+}
+function addSub(){
+  const nEl=document.getElementById('subName');
+  const aEl=document.getElementById('subAmt');
+  const name=(nEl.value||'').trim();
+  const amt=+aEl.value||0;
+  if(!name){ nEl.focus(); return; }
+  if(!amt){ aEl.focus(); return; }
+  DB.subs.push({name, amount:amt});
+  save();
+  nEl.value=''; aEl.value='';
+  render();
+  nEl.focus();
+}
+
 function refreshTotals(){
   const M=month();
   // 収入
@@ -596,6 +693,10 @@ function refreshTotals(){
   // 固定費実績
   let fixed=0,budgetSum=0;
   CATS.forEach(c=>{ fixed+=M.exp[c.key].actual||0; budgetSum+=M.exp[c.key].budget||0; });
+  // サブスク（予算=実績）
+  const subsSum=DB.subs.reduce((a,s)=>a+(+s.amount||0),0);
+  fixed += subsSum;
+  budgetSum += subsSum;
   // 食費・交際費（明細合計）
   const foodSum=M.food.reduce((a,e)=>a+(+e.amount||0),0);
   const kosaiSum=M.kosai.reduce((a,e)=>a+(+e.amount||0),0);
@@ -610,6 +711,7 @@ function refreshTotals(){
   bEl.className='val '+(balance>=0?'pos':'neg');
 
   document.getElementById('fixedTotal').textContent=yen(fixed);
+  document.getElementById('subsTotal').textContent=yen(subsSum);
 
   // 予算消化バー
   const pct=budgetSum? Math.min(100,Math.round(expense/budgetSum*100)) :0;
@@ -716,6 +818,9 @@ document.getElementById('prevM').onclick=()=>{ curKey=shiftMonth(curKey,-1); ren
 document.getElementById('nextM').onclick=()=>{ curKey=shiftMonth(curKey,1); render(); };
 document.getElementById('foodAdd').onclick=()=>addEntry('food');
 document.getElementById('kosaiAdd').onclick=()=>addEntry('kosai');
+document.getElementById('subAdd').onclick=addSub;
+document.getElementById('subName').addEventListener('keydown',e=>{ if(e.key==='Enter') addSub(); });
+document.getElementById('subAmt').addEventListener('keydown',e=>{ if(e.key==='Enter') addSub(); });
 document.getElementById('foodMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('food'); });
 document.getElementById('kosaiMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('kosai'); });
 document.getElementById('recordAsset').onclick=recordAsset;
