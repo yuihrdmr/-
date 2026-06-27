@@ -224,7 +224,7 @@
     <div class="entry-form">
       <div class="ef-row">
         <input type="date" class="ef-date" id="inDate">
-        <input type="number" inputmode="decimal" step="0.01" class="ef-km" id="inKm" placeholder="距離km">
+        <input type="text" inputmode="decimal" lang="en" class="ef-km" id="inKm" placeholder="距離km" autocomplete="off">
       </div>
       <div class="ef-time-row">
         <span class="ef-tlab">タイム</span>
@@ -320,6 +320,13 @@ const cloudEnabled = /^https:\/\/script\.google\.com\//.test(API_URL);
    ============================================================ */
 const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad2 = n => String(n).padStart(2,'0');
+// 全角数字・全角ピリオド → 半角に変換し、数字と小数点だけ残す
+function toHalfNum(s){
+  return String(s)
+    .replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/[．。]/g,'.')
+    .replace(/[^0-9.]/g,'');
+}
 function fmtDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 function parseDate(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,(m||1)-1,d||1); }
 const WDAY = ['日','月','火','水','木','金','土'];
@@ -466,7 +473,7 @@ function addRun(){
   const dEl=document.getElementById('inDate');
   const kEl=document.getElementById('inKm');
   const mEl=document.getElementById('inMemo');
-  const km=+kEl.value||0;
+  const km=+toHalfNum(kEl.value)||0;
   if(!km){ kEl.focus(); return; }
   const h=+document.getElementById('inH').value||0;
   const m=+document.getElementById('inM').value||0;
@@ -633,6 +640,12 @@ function selectedType(){ const b=document.querySelector('#typeSeg button.on'); r
 document.querySelectorAll('#typeSeg button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#typeSeg button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');
+});
+
+// 距離欄：全角で打たれても即座に半角へ変換
+document.getElementById('inKm').addEventListener('input',e=>{
+  const v=toHalfNum(e.target.value);
+  if(v!==e.target.value) e.target.value=v;
 });
 
 document.getElementById('addBtn').onclick=addRun;
