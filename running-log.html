@@ -122,11 +122,33 @@
   }
   .entry-form input:focus{outline:none;border-color:var(--orange-l);background:#fff;box-shadow:0 0 0 4px rgba(232,119,46,.14)}
   .ef-row{display:flex;gap:9px;flex:1 1 100%}
-  .ef-date{flex:1 1 50%;font-family:var(--fnum);font-variant-numeric:tabular-nums}
-  .ef-km{flex:1 1 25%;text-align:right;font-family:var(--fnum)}
-  .ef-time{flex:1 1 25%;text-align:right;font-family:var(--fnum)}
+  .ef-date{flex:1 1 58%;font-family:var(--fnum);font-variant-numeric:tabular-nums}
+  .ef-km{flex:1 1 38%;text-align:right;font-family:var(--fnum)}
   .ef-memo{flex:1 1 100%}
   .ef-hint{flex:1 1 100%;font-size:11px;color:var(--sub);margin-top:-3px}
+
+  /* タイム：時・分・秒のドロップダウン */
+  .ef-time-row{display:flex;align-items:center;gap:8px;flex:1 1 100%}
+  .ef-tlab{font-size:12px;color:var(--sub);font-weight:700;flex:0 0 auto}
+  .ef-tsel{display:flex;align-items:center;gap:4px;flex:1 1 0;min-width:0}
+  .ef-tsel select{
+    flex:1;width:100%;min-width:0;border:1.5px solid var(--line);border-radius:12px;
+    padding:11px 6px;font-size:16px;background:#fffdf7;color:var(--ink);
+    font-family:var(--fnum);text-align:center;text-align-last:center;
+    appearance:none;-webkit-appearance:none;cursor:pointer;
+  }
+  .ef-tsel select:focus{outline:none;border-color:var(--orange-l);box-shadow:0 0 0 4px rgba(232,119,46,.14)}
+  .ef-tsel i{font-size:12px;color:var(--sub);font-style:normal;font-weight:600;flex:0 0 auto}
+
+  /* 種類：通常 / ロング走 の切り替え */
+  .seg{display:flex;gap:8px;flex:1 1 100%}
+  .seg button{
+    flex:1;border:1.5px solid var(--line);background:#fffdf7;color:var(--sub);
+    border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:transform .12s,background .15s,color .15s,box-shadow .15s,border-color .15s;
+  }
+  .seg button.on{background:linear-gradient(135deg,var(--navy-d),var(--navy-l));color:#fff;border-color:transparent;box-shadow:var(--shadow-navy)}
+  .seg button:active{transform:scale(.98)}
 
   .btn{
     width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:800;
@@ -146,7 +168,11 @@
   .rec .r-main{flex:1;min-width:0}
   .rec .r-km{font-family:var(--fnum);font-weight:800;font-size:17px}
   .rec .r-km small{font-size:11px;color:var(--sub);font-weight:600;margin-left:1px}
-  .rec .r-memo{font-size:12px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rec .r-sub{font-size:12px;color:var(--sub);margin-top:2px;display:flex;align-items:center;gap:6px;min-width:0}
+  .rec .r-memo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .type-badge{flex:0 0 auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:7px;line-height:1.5}
+  .type-badge.long{background:#e6edf7;color:var(--navy)}
+  .type-badge.normal{background:#eef1f5;color:#64748b}
   .rec .r-pace{flex:0 0 auto;text-align:right}
   .pace-pill{
     display:inline-block;font-family:var(--fnum);font-weight:800;font-size:14px;
@@ -199,10 +225,19 @@
       <div class="ef-row">
         <input type="date" class="ef-date" id="inDate">
         <input type="number" inputmode="decimal" step="0.01" class="ef-km" id="inKm" placeholder="距離km">
-        <input type="text" inputmode="numeric" class="ef-time" id="inTime" placeholder="タイム">
       </div>
-      <div class="ef-hint">タイムは <b>h:mm:ss</b> または <b>mm:ss</b>（任意・入れるとペース自動計算）</div>
-      <input type="text" class="ef-memo" id="inMemo" placeholder="メモ（ロング走・ジョグ など／任意）">
+      <div class="ef-time-row">
+        <span class="ef-tlab">タイム</span>
+        <span class="ef-tsel"><select id="inH"></select><i>時間</i></span>
+        <span class="ef-tsel"><select id="inM"></select><i>分</i></span>
+        <span class="ef-tsel"><select id="inS"></select><i>秒</i></span>
+      </div>
+      <div class="ef-hint">タイムは任意です（入れるとペースを自動計算）</div>
+      <div class="seg" id="typeSeg">
+        <button type="button" data-type="normal" class="on">通常</button>
+        <button type="button" data-type="long">ロング走</button>
+      </div>
+      <input type="text" class="ef-memo" id="inMemo" placeholder="メモ（任意）">
     </div>
     <button class="btn" id="addBtn">＋ 記録する</button>
   </div>
@@ -346,6 +381,7 @@ function normalize(d){
     date: String(r.date||fmtDate(new Date())),
     km:   +r.km||0,
     sec:  (r.sec==null||r.sec==='') ? null : (+r.sec||null),
+    type: r.type==='long' ? 'long' : 'normal',
     memo: String(r.memo||''),
   })).filter(r=>r.km>0);
   return d;
@@ -429,21 +465,27 @@ async function init(){
 function addRun(){
   const dEl=document.getElementById('inDate');
   const kEl=document.getElementById('inKm');
-  const tEl=document.getElementById('inTime');
   const mEl=document.getElementById('inMemo');
   const km=+kEl.value||0;
   if(!km){ kEl.focus(); return; }
-  const time=tEl.value.trim();
-  if(time && parseTime(time)===null){ tEl.focus(); setStatus('タイムは h:mm:ss か mm:ss で入力してください'); return; }
+  const h=+document.getElementById('inH').value||0;
+  const m=+document.getElementById('inM').value||0;
+  const s=+document.getElementById('inS').value||0;
+  const total=h*3600+m*60+s;
   DB.runs.push({
     id: Date.now()+'-'+Math.random().toString(36).slice(2,8),
     date: dEl.value || fmtDate(new Date()),
     km,
-    sec: parseTime(time),
+    sec: total>0 ? total : null,
+    type: selectedType(),
     memo: (mEl.value||'').trim(),
   });
   save();
-  kEl.value=''; tEl.value=''; mEl.value='';
+  // 入力欄をリセット（種類は連続入力しやすいよう直前の選択を残す）
+  kEl.value=''; mEl.value='';
+  document.getElementById('inH').value='0';
+  document.getElementById('inM').value='0';
+  document.getElementById('inS').value='0';
   render();
   kEl.focus();
 }
@@ -552,7 +594,10 @@ function renderList(){
       `<div class="r-date"><div class="d">${d.getMonth()+1}/${d.getDate()}</div><div class="w">${WDAY[d.getDay()]}</div></div>`+
       `<div class="r-main">`+
         `<div class="r-km">${Math.round(r.km*100)/100}<small>km</small></div>`+
-        (r.memo?`<div class="r-memo">${escapeHtml(r.memo)}</div>`:'')+
+        `<div class="r-sub">`+
+          `<span class="type-badge ${r.type==='long'?'long':'normal'}">${r.type==='long'?'ロング走':'通常'}</span>`+
+          (r.memo?`<span class="r-memo">${escapeHtml(r.memo)}</span>`:'')+
+        `</div>`+
       `</div>`+
       `<div class="r-pace">${paceHtml}</div>`+
       `<button class="r-del" data-del="${r.id}" title="削除">×</button>`;
@@ -574,9 +619,24 @@ function render(){
 /* ============================================================
    イベント
    ============================================================ */
+// 時・分・秒のドロップダウンを生成
+function fillSelect(id,max){
+  const sel=document.getElementById(id);
+  let html='';
+  for(let i=0;i<=max;i++) html+=`<option value="${i}">${pad2(i)}</option>`;
+  sel.innerHTML=html; sel.value='0';
+}
+fillSelect('inH',6); fillSelect('inM',59); fillSelect('inS',59);
+
+// 種類の切り替え（通常 / ロング走）
+function selectedType(){ const b=document.querySelector('#typeSeg button.on'); return b?b.dataset.type:'normal'; }
+document.querySelectorAll('#typeSeg button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#typeSeg button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+});
+
 document.getElementById('addBtn').onclick=addRun;
 document.getElementById('inMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addRun(); });
-document.getElementById('inTime').addEventListener('keydown',e=>{ if(e.key==='Enter') addRun(); });
 document.getElementById('saveNow').onclick=()=>{
   if(cloudEnabled && !loaded){ setStatus('まだ読み込めていません。再読み込みしてください'); return; }
   cloudEnabled ? cloudSave() : save();
