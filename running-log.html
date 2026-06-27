@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1f3a5f">
+<title>ランニングログ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* 紙っぽい背景 ＋ 濃紺 ＋ オレンジのアクセント */
+    --bg:#f3ede1; --card:#fffdf7; --ink:#16243f; --sub:#6c7689;
+    --line:#ece4d4;
+    --navy:#1f3a5f; --navy-d:#15294a; --navy-l:#2f4f7a; --navy-xl:#3f6499;
+    --orange:#e8772e; --orange-l:#f59e42; --orange-d:#cf6320;
+    --tint:#fdf3e9; --tint-line:#f6d9bd;
+    --green:#16a34a; --amber:#f59e0b; --gray:#94a3b8; --red:#ef4444;
+    --ring:rgba(31,58,95,.16);
+    --shadow-card:0 1px 2px rgba(22,36,63,.05), 0 14px 36px -18px rgba(22,36,63,.22);
+    --shadow-navy:0 8px 22px -8px rgba(31,58,95,.5);
+    --shadow-orange:0 8px 22px -8px rgba(232,119,46,.5);
+    --r:20px;
+    --fnum:"Plus Jakarta Sans","Noto Sans JP",sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;
+    font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    color:var(--ink);font-size:15px;line-height:1.55;letter-spacing:.01em;
+    padding-bottom:48px;
+    background:
+      radial-gradient(900px 480px at 105% -8%, rgba(232,119,46,.16), transparent 60%),
+      radial-gradient(760px 420px at -12% 4%, rgba(31,58,95,.12), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-family:var(--fnum);font-variant-numeric:tabular-nums;letter-spacing:0}
+
+  /* ---- ヘッダー ---- */
+  header{
+    color:#fff;padding:20px 18px 22px;position:sticky;top:0;z-index:10;
+    background:linear-gradient(135deg,#15294a 0%,#1f3a5f 50%,#2f4f7a 100%);
+    border-radius:0 0 26px 26px;
+    box-shadow:0 10px 30px -12px rgba(21,41,74,.6);
+    overflow:hidden;
+  }
+  header::after{
+    content:"";position:absolute;right:-40px;top:-60px;width:200px;height:200px;
+    background:radial-gradient(circle,rgba(232,119,46,.28),transparent 70%);pointer-events:none;
+  }
+  .h-title{font-size:20px;font-weight:800;margin:0 0 14px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+  /* カウントダウン＋目標ペース */
+  .race{
+    background:rgba(255,255,255,.12);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:13px 15px;
+  }
+  .race .rc-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .race .rc-name{font-size:12px;opacity:.92;font-weight:600}
+  .race .rc-count{font-family:var(--fnum);font-weight:800}
+  .race .rc-count b{font-size:24px;color:var(--orange-l)}
+  .race .rc-count span{font-size:12px;opacity:.85;margin-left:3px}
+  .goals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .goal{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 10px}
+  .goal .g-lab{font-size:10.5px;opacity:.85;margin-bottom:2px}
+  .goal .g-pace{font-family:var(--fnum);font-weight:800;font-size:17px}
+  .goal .g-pace small{font-size:11px;opacity:.8;font-weight:600}
+  .goal.sub4 .g-pace{color:#86efac}
+  .goal.half .g-pace{color:var(--orange-l)}
+
+  main{max-width:560px;margin:0 auto;padding:18px 16px}
+
+  /* ---- カード ---- */
+  .card{
+    background:var(--card);border:1px solid rgba(236,228,212,.9);
+    border-radius:var(--r);padding:20px;margin-bottom:16px;
+    box-shadow:var(--shadow-card);
+  }
+  .card h2{
+    font-size:12px;margin:0 0 16px;color:var(--sub);font-weight:700;
+    letter-spacing:.08em;display:flex;align-items:center;gap:7px;
+  }
+  .card h2::before{content:"";width:4px;height:14px;border-radius:3px;background:linear-gradient(var(--navy-l),var(--navy-d))}
+
+  /* ---- サマリー ---- */
+  .summary{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:15px;padding:13px 14px}
+  .stat .lab{font-size:11px;color:var(--sub);margin-bottom:5px;font-weight:500}
+  .stat .val{font-size:21px;font-weight:800;font-family:var(--fnum);font-variant-numeric:tabular-nums}
+  .stat .val small{font-size:12px;color:var(--sub);font-weight:600;margin-left:2px}
+  .stat.week .val{color:var(--orange-d)}
+  .stat.month .val{color:var(--navy)}
+
+  /* ---- プログレスバー（最長距離→42.195km） ---- */
+  .bar-wrap{margin-top:4px}
+  .bar-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .bar-head .bh-l{font-size:12px;color:var(--sub);font-weight:600}
+  .bar-head .bh-r{font-family:var(--fnum);font-weight:800;font-size:18px;color:var(--navy)}
+  .bar-head .bh-r small{font-size:11px;color:var(--sub);font-weight:600}
+  .bar-track{height:14px;background:#ece4d4;border-radius:99px;overflow:hidden;position:relative}
+  .bar-fill{height:100%;border-radius:99px;transition:width .5s ease;background:linear-gradient(90deg,var(--orange),var(--orange-l))}
+  .bar-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:7px;font-weight:500}
+
+  /* ---- 週間棒グラフ ---- */
+  .chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:6px}
+  .chart .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+  .chart .cbar-val{font-size:10px;font-family:var(--fnum);font-weight:700;color:var(--sub);margin-bottom:3px;white-space:nowrap}
+  .chart .cbar{width:100%;max-width:30px;border-radius:7px 7px 3px 3px;background:#d8dde6;transition:height .5s ease;min-height:3px}
+  .chart .col.now .cbar{background:linear-gradient(180deg,var(--orange-l),var(--orange))}
+  .chart .col.now .cbar-val{color:var(--orange-d)}
+  .chart .cbar-lab{font-size:10px;color:var(--sub);margin-top:6px;font-family:var(--fnum);white-space:nowrap}
+  .chart .col.now .cbar-lab{color:var(--orange-d);font-weight:700}
+
+  /* ---- 入力フォーム ---- */
+  .entry-form{display:flex;flex-wrap:wrap;gap:9px;align-items:stretch}
+  .entry-form label{flex:1 1 100%;font-size:11px;color:var(--sub);font-weight:600;margin:-2px 0 -4px}
+  .entry-form input{
+    border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font-size:15px;
+    background:#fffdf7;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s;width:100%;
+  }
+  .entry-form input:focus{outline:none;border-color:var(--orange-l);background:#fff;box-shadow:0 0 0 4px rgba(232,119,46,.14)}
+  .ef-row{display:flex;gap:9px;flex:1 1 100%}
+  .ef-date{flex:1 1 50%;font-family:var(--fnum);font-variant-numeric:tabular-nums}
+  .ef-km{flex:1 1 25%;text-align:right;font-family:var(--fnum)}
+  .ef-time{flex:1 1 25%;text-align:right;font-family:var(--fnum)}
+  .ef-memo{flex:1 1 100%}
+  .ef-hint{flex:1 1 100%;font-size:11px;color:var(--sub);margin-top:-3px}
+
+  .btn{
+    width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:800;
+    letter-spacing:.02em;color:#fff;cursor:pointer;margin-top:12px;
+    background:linear-gradient(135deg,var(--orange-d),var(--orange-l));
+    box-shadow:var(--shadow-orange);transition:transform .12s,box-shadow .15s,filter .15s;
+  }
+  .btn:active{transform:translateY(1px) scale(.99);filter:brightness(.96)}
+  .btn.navy{background:linear-gradient(135deg,var(--navy-d),var(--navy-l));box-shadow:var(--shadow-navy)}
+
+  /* ---- 記録一覧 ---- */
+  .rec{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .rec:last-child{border-bottom:0}
+  .rec .r-date{flex:0 0 auto;width:46px;text-align:center}
+  .rec .r-date .d{font-family:var(--fnum);font-weight:800;font-size:15px;line-height:1.1}
+  .rec .r-date .w{font-size:10px;color:var(--sub)}
+  .rec .r-main{flex:1;min-width:0}
+  .rec .r-km{font-family:var(--fnum);font-weight:800;font-size:17px}
+  .rec .r-km small{font-size:11px;color:var(--sub);font-weight:600;margin-left:1px}
+  .rec .r-memo{font-size:12px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rec .r-pace{flex:0 0 auto;text-align:right}
+  .pace-pill{
+    display:inline-block;font-family:var(--fnum);font-weight:800;font-size:14px;
+    padding:5px 9px;border-radius:10px;white-space:nowrap;
+  }
+  .pace-pill small{font-size:10px;font-weight:600;opacity:.85}
+  .pace-pill.g{background:#dcfce7;color:#15803d}
+  .pace-pill.a{background:#fef3c7;color:#b45309}
+  .pace-pill.x{background:#eef1f5;color:#64748b}
+  .pace-pill.none{background:#f1f5f9;color:#94a3b8;font-weight:600;font-size:11px}
+  .rec .r-time{font-size:11px;color:var(--sub);font-family:var(--fnum);margin-top:2px}
+  .rec .r-del{flex:0 0 auto;color:var(--red);background:none;border:0;cursor:pointer;font-size:20px;line-height:1;padding:0 2px;opacity:.55}
+  .rec .r-del:active{opacity:1}
+  .empty-note{color:var(--sub);font-size:12px;padding:16px 0;text-align:center}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--sub)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .legend i.g{background:#22c55e} .legend i.a{background:#f59e0b} .legend i.x{background:#94a3b8}
+
+  .foot{text-align:center;font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1 class="h-title">🏃 ランニングログ</h1>
+  <div class="race">
+    <div class="rc-top">
+      <div class="rc-name" id="raceName">—</div>
+      <div class="rc-count" id="raceCount"><b>—</b></div>
+    </div>
+    <div class="goals">
+      <div class="goal sub4">
+        <div class="g-lab">サブ4（4:00:00）</div>
+        <div class="g-pace" id="goalSub4">—</div>
+      </div>
+      <div class="goal half">
+        <div class="g-lab">4時間半（4:30:00）</div>
+        <div class="g-pace" id="goalHalf">—</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 記録を追加 -->
+  <div class="card">
+    <h2>記録を追加</h2>
+    <div class="entry-form">
+      <div class="ef-row">
+        <input type="date" class="ef-date" id="inDate">
+        <input type="number" inputmode="decimal" step="0.01" class="ef-km" id="inKm" placeholder="距離km">
+        <input type="text" inputmode="numeric" class="ef-time" id="inTime" placeholder="タイム">
+      </div>
+      <div class="ef-hint">タイムは <b>h:mm:ss</b> または <b>mm:ss</b>（任意・入れるとペース自動計算）</div>
+      <input type="text" class="ef-memo" id="inMemo" placeholder="メモ（ロング走・ジョグ など／任意）">
+    </div>
+    <button class="btn" id="addBtn">＋ 記録する</button>
+  </div>
+
+  <!-- サマリー -->
+  <div class="card">
+    <h2>サマリー</h2>
+    <div class="summary">
+      <div class="stat week"><div class="lab">今週の距離</div><div class="val" id="sWeek">0<small>km</small></div></div>
+      <div class="stat month"><div class="lab">今月の距離</div><div class="val" id="sMonth">0<small>km</small></div></div>
+      <div class="stat"><div class="lab">平均ペース<small>（タイム入力分）</small></div><div class="val" id="sPace">—</div></div>
+      <div class="stat"><div class="lab">走った回数</div><div class="val" id="sCount">0<small>回</small></div></div>
+    </div>
+  </div>
+
+  <!-- 最長距離プログレス -->
+  <div class="card">
+    <h2>フルマラソンまでの距離</h2>
+    <div class="bar-wrap">
+      <div class="bar-head">
+        <div class="bh-l">これまでの最長走行距離</div>
+        <div class="bh-r"><span id="maxKm">0</span><small>km</small></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="distBar" style="width:0%"></div></div>
+      <div class="bar-meta"><span id="distPct">0%</span><span>目標 42.195km</span></div>
+    </div>
+  </div>
+
+  <!-- 週間棒グラフ -->
+  <div class="card">
+    <h2>直近8週間の走行距離</h2>
+    <div class="chart" id="chart"></div>
+  </div>
+
+  <!-- 記録一覧 -->
+  <div class="card">
+    <h2>記録一覧</h2>
+    <div id="recList"></div>
+    <div class="legend">
+      <span><i class="g"></i>サブ4ペース（〜5'41"）</span>
+      <span><i class="a"></i>4時間半ペース（〜6'24"）</span>
+      <span><i class="x"></i>ビルドアップ</span>
+    </div>
+  </div>
+
+  <button class="btn navy" id="saveNow">☁️ データを保存する</button>
+  <p class="foot" id="syncStatus">読み込み中…</p>
+  <p class="foot">データはこの端末に保存され、設定したGoogleスプレッドシートにも同期されます。スマホ⇔Chromebookで同じ記録が見られます。</p>
+</main>
+
+<script>
+"use strict";
+/* ============================================================
+   設定（あとから増やすときはここを編集）
+   ============================================================ */
+const CONFIG = {
+  raceName: '横浜マラソン（フル 42.195km）',
+  raceDate: '2026-10-25',        // 大会当日
+  fullKm:   42.195,              // フルマラソンの距離
+  goals: [                       // 目標タイム（秒）。ペースは自動計算
+    {key:'sub4', label:'サブ4',   sec:4*3600},
+    {key:'half', label:'4時間半', sec:4.5*3600},
+  ],
+};
+// ペース判定のしきい値（秒/km）。フルの距離と目標タイムから自動算出
+const PACE_SUB4 = CONFIG.goals[0].sec / CONFIG.fullKm; // ≒341秒 = 5'41"
+const PACE_HALF = CONFIG.goals[1].sec / CONFIG.fullKm; // ≒384秒 = 6'24"
+
+/* ============================================================
+   Googleスプレッドシート連携（Apps Script Web App）
+   ↓ GASをデプロイしたら、ここに /exec のURLを貼る
+   未設定（PASTE_…のまま）でもローカル保存だけで動きます。
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwcZ1E35iYLy3CFQbhzvcrJbUH6Jj3HkovAZi4pYBfjNdUOaW0rYVjNxd2Jg0OovRCMZA/exec';
+const CACHE_KEY = 'running_log_cache_v1';   // 起動時に即表示するためのローカルキャッシュ
+const cloudEnabled = /^https:\/\/script\.google\.com\//.test(API_URL);
+
+/* ============================================================
+   ユーティリティ
+   ============================================================ */
+const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad2 = n => String(n).padStart(2,'0');
+function fmtDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function parseDate(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,(m||1)-1,d||1); }
+const WDAY = ['日','月','火','水','木','金','土'];
+
+// 「h:mm:ss」「mm:ss」→ 秒。空・不正は null
+function parseTime(s){
+  s = String(s||'').trim();
+  if(!s) return null;
+  const parts = s.split(':').map(p=>p.trim());
+  if(parts.some(p=>p==='' || isNaN(Number(p)))) return null;
+  let h=0,m=0,sec=0;
+  if(parts.length===3){ [h,m,sec]=parts.map(Number); }
+  else if(parts.length===2){ [m,sec]=parts.map(Number); }
+  else if(parts.length===1){ sec=Number(parts[0]); }
+  else return null;
+  const total = h*3600 + m*60 + sec;
+  return total>0 ? total : null;
+}
+// 秒 → 「h:mm:ss」または「mm:ss」
+function fmtTime(sec){
+  sec=Math.round(sec);
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  return h>0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`;
+}
+// 秒/km → 「m'ss"」
+function fmtPace(secPerKm){
+  if(!isFinite(secPerKm)||secPerKm<=0) return '—';
+  const m=Math.floor(secPerKm/60), s=Math.round(secPerKm%60);
+  return `${m}'${pad2(s)}"`;
+}
+// ペースのランク（色分け用）
+function paceRank(secPerKm){
+  if(!isFinite(secPerKm)||secPerKm<=0) return null;
+  if(secPerKm <= PACE_SUB4 + 0.5) return 'g';   // サブ4ペース以内 = 緑
+  if(secPerKm <= PACE_HALF + 0.5) return 'a';   // 4時間半ペース以内 = アンバー
+  return 'x';                                    // それより遅い = グレー
+}
+// 月曜始まりの週頭
+function weekStartMon(d){
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const off=(x.getDay()+6)%7; // 月=0 … 日=6
+  x.setDate(x.getDate()-off);
+  return x;
+}
+
+/* ============================================================
+   状態
+   ============================================================ */
+let DB = base();
+let loaded = false;       // 保存を許可してよいか
+let localEdited = false;  // 起動後にユーザーが編集したか
+function base(){ return { runs: [] }; }
+
+function normalize(d){
+  if(!d || typeof d!=='object' || Array.isArray(d)) d = base();
+  if(!Array.isArray(d.runs)) d.runs = [];
+  d.runs = d.runs.filter(r=>r && typeof r==='object').map(r=>({
+    id:   r.id || (Date.now()+'-'+Math.random().toString(36).slice(2,8)),
+    date: String(r.date||fmtDate(new Date())),
+    km:   +r.km||0,
+    sec:  (r.sec==null||r.sec==='') ? null : (+r.sec||null),
+    memo: String(r.memo||''),
+  })).filter(r=>r.km>0);
+  return d;
+}
+
+/* ============================================================
+   ローカルキャッシュ ＋ クラウド保存（kakeibo と同型）
+   ============================================================ */
+function setStatus(msg){ const el=document.getElementById('syncStatus'); if(el) el.textContent=msg; }
+function nowStr(){ const d=new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function writeCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(DB)); }catch(e){} }
+
+let saveTimer=null;
+function save(){
+  localEdited = true;
+  writeCache();                 // まずローカルへ即保存（オフラインでも消えない）
+  if(!cloudEnabled){ setStatus(`この端末に保存しました ✓ (${nowStr()})`); return; }
+  if(!loaded){ return; }        // クラウドの初期読込前は送信しない
+  setStatus('未保存…');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(cloudSave,800);   // 連続入力をまとめて送信
+}
+function cloudSave(){
+  clearTimeout(saveTimer);
+  writeCache();
+  if(!cloudEnabled || !loaded){ return; }
+  setStatus('スプレッドシートに保存中…');
+  fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, // CORSプリフライト回避
+    body:JSON.stringify(DB)
+  })
+  .then(r=>r.text())
+  .then(()=>{ localEdited=false; setStatus(`スプレッドシートに保存しました ✓ (${nowStr()})`); })
+  .catch(()=>setStatus('⚠️ 保存に失敗しました。通信を確認し「データを保存する」を押してください'));
+}
+
+async function init(){
+  // 1) ローカルキャッシュがあれば即表示
+  let hasCache=false;
+  try{
+    const cached=localStorage.getItem(CACHE_KEY);
+    if(cached){
+      DB=normalize(JSON.parse(cached));
+      loaded=true; hasCache=true;
+      render();
+      setStatus(cloudEnabled?'前回のデータを表示中…最新を確認しています':`この端末に保存済み`);
+    }
+  }catch(e){}
+  if(!hasCache){ render(); }
+
+  // クラウド未設定ならローカル専用で終了
+  if(!cloudEnabled){
+    loaded=true;
+    if(!hasCache) setStatus('ローカル保存モード（GASのURL未設定）');
+    return;
+  }
+
+  // 2) バックグラウンドでスプレッドシートの最新を取得
+  if(!hasCache) setStatus('スプレッドシートから読み込み中…');
+  try{
+    const res=await fetch(API_URL,{method:'GET',cache:'no-store'});
+    const txt=await res.text();
+    const data= txt && txt.trim() ? JSON.parse(txt) : base();
+    if(!localEdited){ DB=normalize(data); render(); }
+    loaded=true; writeCache();
+    setStatus(`スプレッドシートと同期済み ✓ (${nowStr()})`);
+  }catch(e){
+    if(hasCache){
+      setStatus('⚠️ オフライン：前回のデータを表示中（オンライン復帰後に保存されます）');
+    }else{
+      loaded=false;
+      setStatus('⚠️ 読み込み失敗：通信を確認して再読み込みしてください（保存は無効）');
+    }
+  }
+}
+
+/* ============================================================
+   データ操作
+   ============================================================ */
+function addRun(){
+  const dEl=document.getElementById('inDate');
+  const kEl=document.getElementById('inKm');
+  const tEl=document.getElementById('inTime');
+  const mEl=document.getElementById('inMemo');
+  const km=+kEl.value||0;
+  if(!km){ kEl.focus(); return; }
+  const time=tEl.value.trim();
+  if(time && parseTime(time)===null){ tEl.focus(); setStatus('タイムは h:mm:ss か mm:ss で入力してください'); return; }
+  DB.runs.push({
+    id: Date.now()+'-'+Math.random().toString(36).slice(2,8),
+    date: dEl.value || fmtDate(new Date()),
+    km,
+    sec: parseTime(time),
+    memo: (mEl.value||'').trim(),
+  });
+  save();
+  kEl.value=''; tEl.value=''; mEl.value='';
+  render();
+  kEl.focus();
+}
+function delRun(id){
+  DB.runs = DB.runs.filter(r=>r.id!==id);
+  save(); render();
+}
+
+/* ============================================================
+   描画
+   ============================================================ */
+function renderRace(){
+  document.getElementById('raceName').textContent = CONFIG.raceName;
+  // カウントダウン
+  const today=new Date(); today.setHours(0,0,0,0);
+  const race=parseDate(CONFIG.raceDate); race.setHours(0,0,0,0);
+  const days=Math.round((race-today)/86400000);
+  const cEl=document.getElementById('raceCount');
+  cEl.innerHTML = days>0 ? `あと <b>${days}</b><span>日</span>`
+               : days===0 ? `<b>本番当日！</b>`
+               : `<b>完走おつかれさま！</b>`;
+  // 目標ペース
+  document.getElementById('goalSub4').innerHTML = `${fmtPace(PACE_SUB4)}<small>/km</small>`;
+  document.getElementById('goalHalf').innerHTML = `${fmtPace(PACE_HALF)}<small>/km</small>`;
+}
+
+function renderSummary(){
+  const runs=DB.runs;
+  const now=new Date();
+  const wkStart=weekStartMon(now);
+  const wkEnd=new Date(wkStart); wkEnd.setDate(wkStart.getDate()+7);
+  const ym=now.getFullYear()+'-'+pad2(now.getMonth()+1);
+
+  let weekKm=0, monthKm=0, tSec=0, tKm=0;
+  runs.forEach(r=>{
+    const d=parseDate(r.date);
+    if(d>=wkStart && d<wkEnd) weekKm+=r.km;
+    if(r.date.slice(0,7)===ym) monthKm+=r.km;
+    if(r.sec){ tSec+=r.sec; tKm+=r.km; }
+  });
+  const round1=n=>Math.round(n*10)/10;
+  document.getElementById('sWeek').innerHTML = `${round1(weekKm)}<small>km</small>`;
+  document.getElementById('sMonth').innerHTML = `${round1(monthKm)}<small>km</small>`;
+  document.getElementById('sCount').innerHTML = `${runs.length}<small>回</small>`;
+  document.getElementById('sPace').textContent = tKm>0 ? fmtPace(tSec/tKm) : '—';
+}
+
+function renderProgress(){
+  const max=DB.runs.reduce((a,r)=>Math.max(a,r.km),0);
+  const pct=Math.min(100, max/CONFIG.fullKm*100);
+  document.getElementById('maxKm').textContent = Math.round(max*10)/10;
+  document.getElementById('distBar').style.width = pct+'%';
+  document.getElementById('distPct').textContent = Math.round(pct)+'%';
+}
+
+function renderChart(){
+  const box=document.getElementById('chart');
+  box.innerHTML='';
+  const curMon=weekStartMon(new Date());
+  // 直近8週間（古い→新しい）のバケツ
+  const weeks=[];
+  for(let i=7;i>=0;i--){
+    const start=new Date(curMon); start.setDate(curMon.getDate()-i*7);
+    weeks.push({start, km:0, now:i===0});
+  }
+  DB.runs.forEach(r=>{
+    const ws=weekStartMon(parseDate(r.date)).getTime();
+    const w=weeks.find(x=>x.start.getTime()===ws);
+    if(w) w.km+=r.km;
+  });
+  const max=Math.max(1, ...weeks.map(w=>w.km));
+  weeks.forEach(w=>{
+    const h=Math.round(w.km/max*100);
+    const col=document.createElement('div');
+    col.className='col'+(w.now?' now':'');
+    col.innerHTML =
+      `<div class="cbar-val">${w.km>0?(Math.round(w.km*10)/10):''}</div>`+
+      `<div class="cbar" style="height:${w.km>0?Math.max(h,4):0}%"></div>`+
+      `<div class="cbar-lab">${w.start.getMonth()+1}/${w.start.getDate()}</div>`;
+    box.appendChild(col);
+  });
+}
+
+function renderList(){
+  const box=document.getElementById('recList');
+  box.innerHTML='';
+  const runs=[...DB.runs].sort((a,b)=> a.date<b.date?1 : a.date>b.date?-1 : (a.id<b.id?1:-1));
+  if(!runs.length){
+    box.innerHTML='<div class="empty-note">まだ記録がありません。上の「記録する」から追加してください。</div>';
+    return;
+  }
+  runs.forEach(r=>{
+    const d=parseDate(r.date);
+    const row=document.createElement('div');
+    row.className='rec';
+    let paceHtml;
+    if(r.sec){
+      const pace=r.sec/r.km;
+      const rank=paceRank(pace);
+      paceHtml=`<span class="pace-pill ${rank}">${fmtPace(pace)}<small>/km</small></span>`
+             +`<div class="r-time">${fmtTime(r.sec)}</div>`;
+    }else{
+      paceHtml=`<span class="pace-pill none">タイム未入力</span>`;
+    }
+    row.innerHTML=
+      `<div class="r-date"><div class="d">${d.getMonth()+1}/${d.getDate()}</div><div class="w">${WDAY[d.getDay()]}</div></div>`+
+      `<div class="r-main">`+
+        `<div class="r-km">${Math.round(r.km*100)/100}<small>km</small></div>`+
+        (r.memo?`<div class="r-memo">${escapeHtml(r.memo)}</div>`:'')+
+      `</div>`+
+      `<div class="r-pace">${paceHtml}</div>`+
+      `<button class="r-del" data-del="${r.id}" title="削除">×</button>`;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    if(confirm('この記録を削除しますか？')) delRun(b.dataset.del);
+  });
+}
+
+function render(){
+  renderRace();
+  renderSummary();
+  renderProgress();
+  renderChart();
+  renderList();
+}
+
+/* ============================================================
+   イベント
+   ============================================================ */
+document.getElementById('addBtn').onclick=addRun;
+document.getElementById('inMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addRun(); });
+document.getElementById('inTime').addEventListener('keydown',e=>{ if(e.key==='Enter') addRun(); });
+document.getElementById('saveNow').onclick=()=>{
+  if(cloudEnabled && !loaded){ setStatus('まだ読み込めていません。再読み込みしてください'); return; }
+  cloudEnabled ? cloudSave() : save();
+};
+
+// 入力欄の日付を今日に初期化
+document.getElementById('inDate').value = fmtDate(new Date());
+init();
+</script>
+</body>
+</html>
