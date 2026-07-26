@@ -195,19 +195,27 @@
   .wkg-foot span:last-child{font-family:var(--fnum)}
   .empty-note{color:var(--sub);font-size:12px;padding:12px 0;text-align:center}
 
-  /* ---- 食費／交際費の色分け ---- */
-  .card-food{border-color:#bbf7d0}
-  .card-food{background:linear-gradient(180deg,#f0fdf4, #ffffff 120px)}
-  .card-food h2{color:#047857;font-size:16px;font-weight:800;letter-spacing:.02em}
-  .card-food h2::before{background:linear-gradient(#34d399,#047857)}
-  .card-food .ef-add{background:linear-gradient(135deg,#059669,#10b981)}
-
-  .card-kosai{border-color:#fed7aa}
-  .card-kosai{background:linear-gradient(180deg,#fff7ed, #ffffff 120px)}
-  .card-kosai h2{color:#c2410c;font-size:16px;font-weight:800;letter-spacing:.02em}
-  .card-kosai h2::before{background:linear-gradient(#fb923c,#c2410c)}
-  .card-kosai .ef-add{background:linear-gradient(135deg,#ea580c,#f97316);box-shadow:0 8px 22px -8px rgba(234,88,12,.45)}
-  .card-kosai .entry-form input:focus{border-color:#fb923c;box-shadow:0 0 0 4px rgba(249,115,22,.15)}
+  /* ---- タブ切り替え（食費・交際費） ---- */
+  .tab-bar{display:flex;gap:6px;background:var(--bg);border-radius:15px;padding:5px;margin-bottom:18px}
+  .tab-btn{
+    flex:1;border:0;border-radius:11px;padding:11px 8px;font-size:15px;font-weight:800;
+    cursor:pointer;background:transparent;color:var(--sub);
+    transition:background .18s,color .18s,box-shadow .18s;letter-spacing:.01em;font-family:inherit;
+  }
+  .tab-btn:active{opacity:.8}
+  .card-tabs{transition:border-color .2s}
+  .card-tabs.tf .tab-btn[data-tab="food"]{background:#fff;color:#047857;box-shadow:0 2px 10px rgba(5,150,105,.22)}
+  .card-tabs.tk .tab-btn[data-tab="kosai"]{background:#fff;color:#c2410c;box-shadow:0 2px 10px rgba(234,88,12,.22)}
+  .card-tabs.tf{border-color:#bbf7d0;background:linear-gradient(180deg,#f0fdf4,#ffffff 80px)}
+  .card-tabs.tk{border-color:#fed7aa;background:linear-gradient(180deg,#fff7ed,#ffffff 80px)}
+  .card-tabs.tf .ef-add{background:linear-gradient(135deg,#059669,#10b981);box-shadow:var(--shadow-brand)}
+  .card-tabs.tk .ef-add{background:linear-gradient(135deg,#ea580c,#f97316);box-shadow:0 8px 22px -8px rgba(234,88,12,.45)}
+  .card-tabs.tk .entry-form input:focus{border-color:#fb923c;box-shadow:0 0 0 4px rgba(249,115,22,.15)}
+  .card-tabs.tf .wk-total{color:#047857}
+  .card-tabs.tk .wk-total{color:#c2410c}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+  .groups-scroll{max-height:240px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -224,30 +232,38 @@
 </header>
 
 <main>
-  <!-- 食費（明細・週グループ） -->
-  <div class="card card-food">
-    <h2>🍚 食費（週予算 ¥10,000）</h2>
-    <div class="entry-form">
-      <input type="date" class="ef-date" id="foodDate">
-      <input type="number" inputmode="numeric" class="ef-amt" id="foodAmt" placeholder="金額">
-      <input type="text" class="ef-memo" id="foodMemo" placeholder="メモ（任意）">
-      <button class="ef-add" id="foodAdd">追加</button>
+  <!-- タブ切り替え（食費・交際費） -->
+  <div class="card card-tabs tf" id="entryCard">
+    <div class="tab-bar">
+      <button class="tab-btn" data-tab="food" id="tabFood">🍚 食費</button>
+      <button class="tab-btn" data-tab="kosai" id="tabKosai">🍻 交際費</button>
     </div>
-    <div id="foodGroups"></div>
-    <div class="wk-total" id="foodTotal">合計 ¥0</div>
-  </div>
 
-  <!-- 交際費（明細・週グループ） -->
-  <div class="card card-kosai">
-    <h2>🍻 交際費（週予算 約¥7,500）</h2>
-    <div class="entry-form">
-      <input type="date" class="ef-date" id="kosaiDate">
-      <input type="number" inputmode="numeric" class="ef-amt" id="kosaiAmt" placeholder="金額">
-      <input type="text" class="ef-memo" id="kosaiMemo" placeholder="メモ（任意）">
-      <button class="ef-add" id="kosaiAdd">追加</button>
+    <!-- 食費パネル -->
+    <div class="tab-panel active" id="panelFood">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:10px;font-weight:500">週予算 ¥10,000</div>
+      <div class="entry-form">
+        <input type="date" class="ef-date" id="foodDate">
+        <input type="number" inputmode="numeric" class="ef-amt" id="foodAmt" placeholder="金額">
+        <input type="text" class="ef-memo" id="foodMemo" placeholder="メモ（任意）">
+        <button class="ef-add" id="foodAdd">追加</button>
+      </div>
+      <div class="groups-scroll" id="foodGroups"></div>
+      <div class="wk-total" id="foodTotal">合計 ¥0</div>
     </div>
-    <div id="kosaiGroups"></div>
-    <div class="wk-total" id="kosaiTotal">合計 ¥0</div>
+
+    <!-- 交際費パネル -->
+    <div class="tab-panel" id="panelKosai">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:10px;font-weight:500">週予算 約¥7,500</div>
+      <div class="entry-form">
+        <input type="date" class="ef-date" id="kosaiDate">
+        <input type="number" inputmode="numeric" class="ef-amt" id="kosaiAmt" placeholder="金額">
+        <input type="text" class="ef-memo" id="kosaiMemo" placeholder="メモ（任意）">
+        <button class="ef-add" id="kosaiAdd">追加</button>
+      </div>
+      <div class="groups-scroll" id="kosaiGroups"></div>
+      <div class="wk-total" id="kosaiTotal">合計 ¥0</div>
+    </div>
   </div>
 
   <!-- 固定費・変動費 -->
@@ -662,7 +678,20 @@ function refreshTotals(){
   document.getElementById('kosaiTotal').textContent=`合計 ${yen(kosaiSum)}`;
 }
 
+// ---- タブ切り替え ----
+let curTab = 'food';
+function switchTab(kind){
+  curTab = kind;
+  const card = document.getElementById('entryCard');
+  card.classList.toggle('tf', kind==='food');
+  card.classList.toggle('tk', kind==='kosai');
+  document.getElementById('panelFood').classList.toggle('active', kind==='food');
+  document.getElementById('panelKosai').classList.toggle('active', kind==='kosai');
+}
+
 // ---- イベント ----
+document.getElementById('tabFood').onclick=()=>switchTab('food');
+document.getElementById('tabKosai').onclick=()=>switchTab('kosai');
 document.getElementById('prevM').onclick=()=>{ curKey=shiftMonth(curKey,-1); render(); };
 document.getElementById('nextM').onclick=()=>{ curKey=shiftMonth(curKey,1); render(); };
 document.getElementById('foodAdd').onclick=()=>addEntry('food');
