@@ -194,6 +194,20 @@
   .wkg-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:9px;font-weight:500}
   .wkg-foot span:last-child{font-family:var(--fnum)}
   .empty-note{color:var(--sub);font-size:12px;padding:12px 0;text-align:center}
+
+  /* ---- 食費／交際費の色分け ---- */
+  .card-food{border-color:#bbf7d0}
+  .card-food{background:linear-gradient(180deg,#f0fdf4, #ffffff 120px)}
+  .card-food h2{color:#047857;font-size:16px;font-weight:800;letter-spacing:.02em}
+  .card-food h2::before{background:linear-gradient(#34d399,#047857)}
+  .card-food .ef-add{background:linear-gradient(135deg,#059669,#10b981)}
+
+  .card-kosai{border-color:#fed7aa}
+  .card-kosai{background:linear-gradient(180deg,#fff7ed, #ffffff 120px)}
+  .card-kosai h2{color:#c2410c;font-size:16px;font-weight:800;letter-spacing:.02em}
+  .card-kosai h2::before{background:linear-gradient(#fb923c,#c2410c)}
+  .card-kosai .ef-add{background:linear-gradient(135deg,#ea580c,#f97316);box-shadow:0 8px 22px -8px rgba(234,88,12,.45)}
+  .card-kosai .entry-form input:focus{border-color:#fb923c;box-shadow:0 0 0 4px rgba(249,115,22,.15)}
 </style>
 </head>
 <body>
@@ -210,31 +224,30 @@
 </header>
 
 <main>
-  <!-- サマリー -->
-  <div class="card">
-    <h2>今月の収支</h2>
-    <div class="summary">
-      <div class="stat income"><div class="lab">収入</div><div class="val" id="sIncome">¥0</div></div>
-      <div class="stat expense"><div class="lab">支出（実績）</div><div class="val" id="sExpense">¥0</div></div>
-      <div class="stat balance"><div class="lab">収支（収入 − 支出実績）</div><div class="val" id="sBalance">¥0</div></div>
+  <!-- 食費（明細・週グループ） -->
+  <div class="card card-food">
+    <h2>🍚 食費（週予算 ¥10,000）</h2>
+    <div class="entry-form">
+      <input type="date" class="ef-date" id="foodDate">
+      <input type="number" inputmode="numeric" class="ef-amt" id="foodAmt" placeholder="金額">
+      <input type="text" class="ef-memo" id="foodMemo" placeholder="メモ（任意）">
+      <button class="ef-add" id="foodAdd">追加</button>
     </div>
-    <div class="bar-wrap">
-      <div class="bar-track"><div class="bar-fill" id="budgetBar"></div></div>
-      <div class="bar-meta"><span id="budgetMetaL">予算消化 0%</span><span id="budgetMetaR">予算 ¥0</span></div>
-    </div>
+    <div id="foodGroups"></div>
+    <div class="wk-total" id="foodTotal">合計 ¥0</div>
   </div>
 
-  <!-- 収入 -->
-  <div class="card">
-    <h2>収入（給料日：毎月16日）</h2>
-    <div class="row">
-      <div class="nm"><div class="n">給料</div><div class="b">手取り月収</div></div>
-      <input class="num-in" type="number" inputmode="numeric" id="inSalary" placeholder="0"><span class="yen">円</span>
+  <!-- 交際費（明細・週グループ） -->
+  <div class="card card-kosai">
+    <h2>🍻 交際費（週予算 約¥7,500）</h2>
+    <div class="entry-form">
+      <input type="date" class="ef-date" id="kosaiDate">
+      <input type="number" inputmode="numeric" class="ef-amt" id="kosaiAmt" placeholder="金額">
+      <input type="text" class="ef-memo" id="kosaiMemo" placeholder="メモ（任意）">
+      <button class="ef-add" id="kosaiAdd">追加</button>
     </div>
-    <div class="row">
-      <div class="nm"><div class="n">ボーナス</div><div class="b">この期間に支給された分</div></div>
-      <input class="num-in" type="number" inputmode="numeric" id="inBonus" placeholder="0"><span class="yen">円</span>
-    </div>
+    <div id="kosaiGroups"></div>
+    <div class="wk-total" id="kosaiTotal">合計 ¥0</div>
   </div>
 
   <!-- 固定費・変動費 -->
@@ -259,65 +272,6 @@
     <div class="cat-total">
       <span>サブスク 合計</span>
       <span id="subsTotal">¥0</span>
-    </div>
-  </div>
-
-  <!-- 食費（明細・週グループ） -->
-  <div class="card">
-    <h2>🍚 食費（週予算 ¥10,000）</h2>
-    <div class="entry-form">
-      <input type="date" class="ef-date" id="foodDate">
-      <input type="number" inputmode="numeric" class="ef-amt" id="foodAmt" placeholder="金額">
-      <input type="text" class="ef-memo" id="foodMemo" placeholder="メモ（任意）">
-      <button class="ef-add" id="foodAdd">追加</button>
-    </div>
-    <div id="foodGroups"></div>
-    <div class="wk-total" id="foodTotal">合計 ¥0</div>
-  </div>
-
-  <!-- 交際費（明細・週グループ） -->
-  <div class="card">
-    <h2>🍻 交際費（週予算 約¥7,500）</h2>
-    <div class="entry-form">
-      <input type="date" class="ef-date" id="kosaiDate">
-      <input type="number" inputmode="numeric" class="ef-amt" id="kosaiAmt" placeholder="金額">
-      <input type="text" class="ef-memo" id="kosaiMemo" placeholder="メモ（任意）">
-      <button class="ef-add" id="kosaiAdd">追加</button>
-    </div>
-    <div id="kosaiGroups"></div>
-    <div class="wk-total" id="kosaiTotal">合計 ¥0</div>
-  </div>
-
-  <!-- 資産 -->
-  <div class="card">
-    <h2>📈 資産状況</h2>
-    <div class="asset-total">
-      <div class="lab">総資産</div>
-      <div class="val" id="assetTotal">¥0</div>
-    </div>
-    <div class="asset-grid">
-      <div class="row">
-        <div class="nm"><div class="n">現金</div></div>
-        <input class="num-in" type="number" inputmode="numeric" id="aCash" placeholder="0"><span class="yen">円</span>
-      </div>
-      <div class="row">
-        <div class="nm"><div class="n">楽天証券（株）</div></div>
-        <input class="num-in" type="number" inputmode="numeric" id="aStock" placeholder="0"><span class="yen">円</span>
-      </div>
-      <div class="row">
-        <div class="nm"><div class="n">楽天証券（投資信託）</div></div>
-        <input class="num-in" type="number" inputmode="numeric" id="aFund" placeholder="0"><span class="yen">円</span>
-      </div>
-      <div class="row">
-        <div class="nm"><div class="n">楽天証券（債券）</div></div>
-        <input class="num-in" type="number" inputmode="numeric" id="aBond" placeholder="0"><span class="yen">円</span>
-      </div>
-    </div>
-    <button class="btn" id="recordAsset">この内容で資産推移を記録する</button>
-    <button class="btn ghost" id="toggleHist" style="margin-top:8px">記録履歴を表示 / 隠す</button>
-    <div id="histBox" style="display:none">
-      <canvas id="chart"></canvas>
-      <div class="hist" id="histList"></div>
     </div>
   </div>
 
@@ -536,9 +490,6 @@ function render(){
   document.getElementById('mLabel').textContent=r.label;
   document.getElementById('mRange').textContent=r.range;
 
-  document.getElementById('inSalary').value=M.salary||'';
-  document.getElementById('inBonus').value=M.bonus||'';
-
   // カテゴリ一覧
   const list=document.getElementById('catList');
   list.innerHTML='';
@@ -582,14 +533,7 @@ function render(){
   const today=fmtDate(new Date());
   ['food','kosai'].forEach(k=>{ const el=document.getElementById(k+'Date'); if(el && !el.value) el.value=today; });
 
-  // 資産入力欄
-  document.getElementById('aCash').value=DB.assets.cash||'';
-  document.getElementById('aStock').value=DB.assets.stock||'';
-  document.getElementById('aFund').value=DB.assets.fund||'';
-  document.getElementById('aBond').value=DB.assets.bond||'';
-
   refreshTotals();
-  renderHistory();
 }
 
 // 明細を週ごとにグループ化して描画
@@ -688,38 +632,15 @@ function addSub(){
 
 function refreshTotals(){
   const M=month();
-  // 収入
-  const income=(+M.salary||0)+(+M.bonus||0);
   // 固定費実績
-  let fixed=0,budgetSum=0;
-  CATS.forEach(c=>{ fixed+=M.exp[c.key].actual||0; budgetSum+=M.exp[c.key].budget||0; });
+  let fixed=0;
+  CATS.forEach(c=>{ fixed+=M.exp[c.key].actual||0; });
   // サブスク（予算=実績）
   const subsSum=DB.subs.reduce((a,s)=>a+(+s.amount||0),0);
   fixed += subsSum;
-  budgetSum += subsSum;
-  // 食費・交際費（明細合計）
-  const foodSum=M.food.reduce((a,e)=>a+(+e.amount||0),0);
-  const kosaiSum=M.kosai.reduce((a,e)=>a+(+e.amount||0),0);
-  budgetSum += FOOD_WK*4 + KOSAI_WK*4;
-  const expense=fixed+foodSum+kosaiSum;
-  const balance=income-expense;
-
-  document.getElementById('sIncome').textContent=yen(income);
-  document.getElementById('sExpense').textContent=yen(expense);
-  const bEl=document.getElementById('sBalance');
-  bEl.textContent=(balance>=0?'+':'−')+'¥'+Math.abs(balance).toLocaleString('ja-JP');
-  bEl.className='val '+(balance>=0?'pos':'neg');
 
   document.getElementById('fixedTotal').textContent=yen(fixed);
   document.getElementById('subsTotal').textContent=yen(subsSum);
-
-  // 予算消化バー
-  const pct=budgetSum? Math.min(100,Math.round(expense/budgetSum*100)) :0;
-  const bar=document.getElementById('budgetBar');
-  bar.style.width=pct+'%';
-  bar.style.background= pct<70?'var(--green)': pct<100?'var(--amber)':'var(--red)';
-  document.getElementById('budgetMetaL').textContent=`予算消化 ${pct}%`;
-  document.getElementById('budgetMetaR').textContent=`予算 ${yen(budgetSum)}`;
 
   // カテゴリ消化バー（消耗品など）
   CATS.forEach(c=>{
@@ -735,85 +656,13 @@ function refreshTotals(){
   });
 
   // 食費・交際費 合計表示
+  const foodSum=M.food.reduce((a,e)=>a+(+e.amount||0),0);
+  const kosaiSum=M.kosai.reduce((a,e)=>a+(+e.amount||0),0);
   document.getElementById('foodTotal').textContent=`合計 ${yen(foodSum)}`;
   document.getElementById('kosaiTotal').textContent=`合計 ${yen(kosaiSum)}`;
-
-  // 資産
-  const at=(+DB.assets.cash||0)+(+DB.assets.stock||0)+(+DB.assets.fund||0)+(+DB.assets.bond||0);
-  document.getElementById('assetTotal').textContent=yen(at);
-}
-
-// ---- 資産履歴 ----
-function renderHistory(){
-  const list=document.getElementById('histList');
-  const h=DB.assets.history;
-  list.innerHTML='';
-  [...h].reverse().forEach((rec,idx)=>{
-    const realIdx=h.length-1-idx;
-    const row=document.createElement('div');
-    row.className='hr';
-    row.innerHTML=`<span>${rec.date}</span><span>${yen(rec.total)}</span>`;
-    const del=document.createElement('button');
-    del.className='del-link'; del.textContent='削除';
-    del.onclick=()=>{ h.splice(realIdx,1); save(); renderHistory(); };
-    row.appendChild(del);
-    list.appendChild(row);
-  });
-  if(!h.length) list.innerHTML='<div style="padding:8px 0">まだ記録がありません。</div>';
-  drawChart();
-}
-
-function recordAsset(){
-  const a=DB.assets;
-  a.cash=+document.getElementById('aCash').value||0;
-  a.stock=+document.getElementById('aStock').value||0;
-  a.fund=+document.getElementById('aFund').value||0;
-  a.bond=+document.getElementById('aBond').value||0;
-  const total=a.cash+a.stock+a.fund+a.bond;
-  const d=new Date();
-  const date=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-  a.history.push({date,cash:a.cash,stock:a.stock,fund:a.fund,bond:a.bond,total});
-  save(); render();
-  document.getElementById('histBox').style.display='block';
-}
-
-// 簡易折れ線グラフ
-function drawChart(){
-  const cv=document.getElementById('chart');
-  const dpr=window.devicePixelRatio||1;
-  const w=cv.clientWidth||320, h=160;
-  cv.width=w*dpr; cv.height=h*dpr;
-  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,w,h);
-  const data=DB.assets.history;
-  if(data.length<1) return;
-  const pad=28, gx0=8, gx1=w-8, gy0=12, gy1=h-pad;
-  const vals=data.map(d=>d.total);
-  const max=Math.max(...vals,1), min=Math.min(...vals,0);
-  const sx=i=> data.length<2? (gx0+gx1)/2 : gx0+(gx1-gx0)*i/(data.length-1);
-  const sy=v=> gy1-(gy1-gy0)*((v-min)/((max-min)||1));
-  // 塗り
-  ctx.beginPath();
-  data.forEach((d,i)=>{ const x=sx(i),y=sy(d.total); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.lineTo(sx(data.length-1),gy1); ctx.lineTo(sx(0),gy1); ctx.closePath();
-  const grad=ctx.createLinearGradient(0,gy0,0,gy1);
-  grad.addColorStop(0,'rgba(16,185,129,.28)'); grad.addColorStop(1,'rgba(16,185,129,.02)');
-  ctx.fillStyle=grad; ctx.fill();
-  // 線
-  ctx.beginPath();
-  data.forEach((d,i)=>{ const x=sx(i),y=sy(d.total); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.strokeStyle='#059669'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
-  // 点
-  data.forEach((d,i)=>{ ctx.beginPath(); ctx.arc(sx(i),sy(d.total),3.5,0,7); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#059669'; ctx.stroke(); });
-  // ラベル（最新値）
-  ctx.fillStyle='#64748b'; ctx.font='10px sans-serif'; ctx.textAlign='right';
-  ctx.fillText(yen(max), w-2, gy0+4);
-  ctx.fillText(yen(min), w-2, gy1);
 }
 
 // ---- イベント ----
-document.getElementById('inSalary').oninput=e=>{ month().salary=+e.target.value||0; save(); refreshTotals(); };
-document.getElementById('inBonus').oninput=e=>{ month().bonus=+e.target.value||0; save(); refreshTotals(); };
 document.getElementById('prevM').onclick=()=>{ curKey=shiftMonth(curKey,-1); render(); };
 document.getElementById('nextM').onclick=()=>{ curKey=shiftMonth(curKey,1); render(); };
 document.getElementById('foodAdd').onclick=()=>addEntry('food');
@@ -823,23 +672,11 @@ document.getElementById('subName').addEventListener('keydown',e=>{ if(e.key==='E
 document.getElementById('subAmt').addEventListener('keydown',e=>{ if(e.key==='Enter') addSub(); });
 document.getElementById('foodMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('food'); });
 document.getElementById('kosaiMemo').addEventListener('keydown',e=>{ if(e.key==='Enter') addEntry('kosai'); });
-document.getElementById('recordAsset').onclick=recordAsset;
 document.getElementById('saveNow').onclick=()=>{
   if(!loaded){ setStatus('まだ読み込めていません。ページを再読み込みしてください'); return; }
-  // 入力中の資産残高も取り込んでから即送信
-  DB.assets.cash =+document.getElementById('aCash').value||0;
-  DB.assets.stock=+document.getElementById('aStock').value||0;
-  DB.assets.fund =+document.getElementById('aFund').value||0;
-  DB.assets.bond =+document.getElementById('aBond').value||0;
   cloudSave();   // 予約済みの自動保存はcloudSave内でキャンセルして即実行
   refreshTotals();
 };
-document.getElementById('toggleHist').onclick=()=>{
-  const b=document.getElementById('histBox');
-  b.style.display=b.style.display==='none'?'block':'none';
-  if(b.style.display==='block') drawChart();
-};
-window.addEventListener('resize',()=>{ if(document.getElementById('histBox').style.display!=='none') drawChart(); });
 
 init();
 </script>
